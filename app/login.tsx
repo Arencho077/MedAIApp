@@ -133,22 +133,43 @@ export default function LoginScreen() {
       if (error) throw error;
 
       if (data.user) {
-        const { data: existingProfile } = await supabase
+        let { data: existingProfile } = await supabase
           .from('profiles')
-          .select('id')
+          .select('id, role')
           .eq('id', data.user.id)
           .single();
 
         if (!existingProfile) {
+          // Profile doesn't exist yet — create it using metadata
           const meta = data.user.user_metadata;
+          const profileRole = meta?.role || role || 'patient';
           await supabase.from('profiles').insert({
             id: data.user.id,
-            role: meta?.role || role || 'patient',
-            full_name: meta?.full_name || 'Օգտատեર',
+            role: profileRole,
+            full_name: meta?.full_name || 'Օգտատեր',
             birth_year: meta?.birth_year || null,
             social_link: meta?.social_link || null,
             diploma_url: meta?.diploma_url || null,
           });
+          // Re-fetch to get the newly created profile
+          const { data: newProfile } = await supabase
+            .from('profiles')
+            .select('id, role')
+            .eq('id', data.user.id)
+            .single();
+          existingProfile = newProfile;
+        }
+
+        // 🔒 ROLE VALIDATION: Check selected role matches actual DB role
+        if (existingProfile && role && existingProfile.role !== role) {
+          await supabase.auth.signOut();
+          const selectedRoleLabel = role === 'doctor' ? 'Բժիշկ' : 'Պացիենտ';
+          const actualRoleLabel = existingProfile.role === 'doctor' ? 'Բժիշկ' : 'Պացիենտ';
+          Alert.alert(
+            'Սխալ դեր ⚠️',
+            `Այս հաշիվը գրանցված է որպես «${actualRoleLabel}»։\nԴուք ընտրել եք «${selectedRoleLabel}»։\n\nԽնդրում ենք վերադառնալ և ընտրել ճիշտ կարգավիճակը։`
+          );
+          return;
         }
       }
 
