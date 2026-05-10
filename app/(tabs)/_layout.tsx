@@ -1,33 +1,67 @@
 import { Tabs } from 'expo-router';
-import React from 'react';
-
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import React, { useState, useEffect } from 'react';
+import { Platform } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { supabase } from '../../services/supabase';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const checkAdmin = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user && user.email === 'sargsyanaren218@gmail.com') {
+        setIsAdmin(true);
+      }
+    };
+    checkAdmin();
+  }, []);
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+        tabBarActiveTintColor: '#00C4B4',
         headerShown: false,
-        tabBarButton: HapticTab,
+        tabBarStyle: {
+          backgroundColor: '#ffffff',
+          borderTopColor: '#E0E8F0',
+        },
       }}>
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          title: 'Չատ',
+          tabBarIcon: ({ color }) => <Ionicons name="chatbubbles-outline" size={28} color={color} />,
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="doctors"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: 'Բժիշկներ',
+          tabBarIcon: ({ color }) => <Ionicons name="medical-outline" size={28} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="pharmacy"
+        options={{
+          title: 'Դեղատուն',
+          tabBarIcon: ({ color }) => <Ionicons name="cart-outline" size={28} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="dashboard"
+        options={{
+          title: 'Կաբինետ',
+          tabBarIcon: ({ color }) => <Ionicons name="person-outline" size={28} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="admin"
+        options={{
+          title: 'Admin',
+          tabBarIcon: ({ color }) => <Ionicons name="shield-checkmark-outline" size={28} color={color} />,
+          // Hides the tab completely from the bottom bar if not admin
+          href: isAdmin ? '/admin' : null,
         }}
       />
     </Tabs>
