@@ -40,7 +40,7 @@ const TIME_SLOTS = [
   '16:30', '17:00', '17:30',
 ];
 
-const DAY_NAMES_SHORT = ['Կիdelays', 'Երdelay', 'Երdelays', 'Չdelays', 'Հdelays', 'Ուdelays', 'Շdelays'];
+const DAY_NAMES_SHORT = ['Կիր', 'Երկ', 'Երք', 'Չրք', 'Հնգ', 'Ուրբ', 'Շբթ'];
 const MONTH_NAMES = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'

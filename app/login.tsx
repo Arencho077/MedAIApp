@@ -60,7 +60,7 @@ export default function LoginScreen() {
   };
 
   const handleRegister = async () => {
-    if (!email || !password || !fullName) {
+    if (!email.trim() || !password || !fullName.trim()) {
       Alert.alert('Սխալ', 'Խնդրում ենք լրացնել բոլոր դաշտերը');
       return;
     }
@@ -136,7 +136,10 @@ export default function LoginScreen() {
         setMode('login');
       }
     } catch (e: any) {
-      Alert.alert('Սխալ', e.message || 'Ինչ-որ սխալ տեղի ունեցավ');
+      const errorMessage = e.message === 'Failed to fetch' 
+        ? 'Կապի խնդիր: Ստուգեք Ձեր ինտերնետ կապը:' 
+        : (e.message || 'Ինչ-որ սխալ տեղի ունեցավ');
+      Alert.alert('Սխալ', errorMessage);
     } finally {
       setLoading(false);
     }
