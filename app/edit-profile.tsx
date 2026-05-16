@@ -49,26 +49,21 @@ export default function EditProfileScreen() {
   };
 
   const pickImage = async () => {
-    // Request permission
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (permissionResult.granted === false) {
       Alert.alert('Permission needed', 'You need to allow access to your photos to upload an avatar.');
       return;
     }
 
-    // Open gallery
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
-      aspect: [1, 1], // Square avatar
-      quality: 0.3, // Low quality to keep base64 string small
-      base64: true, // Crucial: gives us the image as a text string!
+      aspect: [1, 1],
+      quality: 0.8, // Better quality since we are uploading a file now
     });
 
-    if (!result.canceled && result.assets[0].base64) {
-      // Create the base64 data URI string
-      const base64Image = `data:image/jpeg;base64,${result.assets[0].base64}`;
-      setImageUrl(base64Image); // Update state instantly so user sees the preview
+    if (!result.canceled && result.assets[0].uri) {
+      setImageUrl(result.assets[0].uri); // Update state with local URI for preview
     }
   };
 
@@ -83,6 +78,25 @@ export default function EditProfileScreen() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      let finalImageUrl = imageUrl;
+
+      // If imageUrl is a local file (not starting with http), upload it to Storage
+      if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('data:')) {
+        const response = await fetch(imageUrl);
+        const blob = await response.blob();
+        const fileExt = imageUrl.split('.').pop() || 'jpg';
+        const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('avatars')
+          .upload(fileName, blob, { contentType: `image/${fileExt}` });
+          
+        if (uploadError) throw uploadError;
+        
+        const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(fileName);
+        finalImageUrl = publicUrl;
+      }
+
       const { error } = await supabase
         .from('profiles')
         .update({
@@ -90,7 +104,7 @@ export default function EditProfileScreen() {
           specialty: specialty.trim(),
           experience: experience.trim(),
           clinic_address: clinicAddress.trim(),
-          image_url: imageUrl, // Saves the huge base64 string directly into Postgres
+          image_url: finalImageUrl, // Saves the clean public URL
         })
         .eq('id', user.id);
 
@@ -156,6 +170,7 @@ export default function EditProfileScreen() {
                 onChangeText={setFullName}
                 placeholder="Your full name"
                 placeholderTextColor="#CBD5E1"
+                maxLength={100}
               />
             </View>
           </View>
@@ -172,6 +187,7 @@ export default function EditProfileScreen() {
                     onChangeText={setSpecialty}
                     placeholder="e.g. Cardiologist, Pediatrician"
                     placeholderTextColor="#CBD5E1"
+                    maxLength={100}
                   />
                 </View>
               </View>
@@ -186,6 +202,7 @@ export default function EditProfileScreen() {
                     onChangeText={setExperience}
                     placeholder="e.g. 10 years"
                     placeholderTextColor="#CBD5E1"
+                    maxLength={50}
                   />
                 </View>
               </View>
@@ -200,6 +217,7 @@ export default function EditProfileScreen() {
                     onChangeText={setClinicAddress}
                     placeholder="e.g. Yerevan, Abovyan 12"
                     placeholderTextColor="#CBD5E1"
+                    maxLength={200}
                   />
                 </View>
               </View>

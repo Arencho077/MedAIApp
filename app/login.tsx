@@ -51,13 +51,11 @@ export default function LoginScreen() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
-      quality: 0.3,
-      base64: true,
+      quality: 0.8,
     });
 
-    if (!result.canceled && result.assets[0].base64) {
-      const base64Image = `data:image/jpeg;base64,${result.assets[0].base64}`;
-      setDiplomaUrl(base64Image);
+    if (!result.canceled && result.assets[0].uri) {
+      setDiplomaUrl(result.assets[0].uri);
     }
   };
 
@@ -86,19 +84,41 @@ export default function LoginScreen() {
             role,
             birth_year: formattedDate,
             social_link: socialLink,
-            diploma_url: diplomaUrl
+            // diploma_url is set after upload
           } 
         }
       });
       if (error) throw error;
       if (data.user) {
+        let finalDiplomaUrl = diplomaUrl;
+
+        // Upload diploma to storage if it's a local file
+        if (role === 'doctor' && diplomaUrl && !diplomaUrl.startsWith('http')) {
+          const response = await fetch(diplomaUrl);
+          const blob = await response.blob();
+          const fileExt = diplomaUrl.split('.').pop() || 'jpg';
+          const fileName = `${data.user.id}-${Date.now()}.${fileExt}`;
+          
+          const { error: uploadError } = await supabase.storage
+            .from('diplomas')
+            .upload(fileName, blob, { contentType: `image/${fileExt}` });
+            
+          if (uploadError) throw uploadError;
+          
+          const { data: { publicUrl } } = supabase.storage.from('diplomas').getPublicUrl(fileName);
+          finalDiplomaUrl = publicUrl;
+          
+          // Update user metadata with the final URL
+          await supabase.auth.updateUser({ data: { diploma_url: finalDiplomaUrl } });
+        }
+
         const { error: insertError } = await supabase.from('profiles').insert({
           id: data.user.id,
           role,
           full_name: fullName,
           birth_year: formattedDate || null,
           social_link: socialLink || null,
-          diploma_url: diplomaUrl || null,
+          diploma_url: finalDiplomaUrl || null,
         });
         
         if (insertError) {
@@ -242,6 +262,7 @@ export default function LoginScreen() {
                   value={fullName}
                   onChangeText={setFullName}
                   autoCapitalize="words"
+                  maxLength={100}
                 />
               </View>
             )}
@@ -256,6 +277,7 @@ export default function LoginScreen() {
                 onChangeText={setEmail}
                 keyboardType="email-address"
                 autoCapitalize="none"
+                maxLength={150}
               />
             </View>
 
@@ -268,6 +290,7 @@ export default function LoginScreen() {
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
+                maxLength={64}
               />
             </View>
 
@@ -314,6 +337,7 @@ export default function LoginScreen() {
                     value={socialLink}
                     onChangeText={setSocialLink}
                     autoCapitalize="none"
+                    maxLength={200}
                   />
                 </View>
 
