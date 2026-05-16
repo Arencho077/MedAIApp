@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ActivityIndicator, Image, Linking, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../services/supabase';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, Redirect } from 'expo-router';
 
 type DoctorProfile = {
   id: string;
@@ -110,13 +110,7 @@ export default function AdminScreen() {
   }
 
   if (!isAdmin) {
-    return (
-      <View style={styles.center}>
-        <Ionicons name="lock-closed" size={60} color="#CBD5E1" />
-        <Text style={styles.errorText}>Доступ запрещен</Text>
-        <Text style={styles.errorSubtext}>Эта страница только для администратора.</Text>
-      </View>
-    );
+    return <Redirect href="/(tabs)" />;
   }
 
   return (
