@@ -6,6 +6,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { supabase } from '../services/supabase';
 import { Session } from '@supabase/supabase-js';
+import { registerForPushNotificationsAsync } from '../services/push';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -27,6 +28,7 @@ export default function RootLayout() {
         checkDoctorAccess(s).then(allowed => {
           if (allowed) {
             setSession(s);
+            registerForPushNotificationsAsync();
           } else {
             // Don't set session — doctor is not approved
             setSession(null);
@@ -47,6 +49,7 @@ export default function RootLayout() {
         checkDoctorAccess(s).then(allowed => {
           if (allowed) {
             setSession(s);
+            registerForPushNotificationsAsync();
           } else {
             setSession(null);
           }
