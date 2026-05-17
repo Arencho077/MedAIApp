@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ActivityIndicator, Image, Linking, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ActivityIndicator, Image, Linking, ScrollView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../services/supabase';
 import { useFocusEffect, Redirect } from 'expo-router';
@@ -61,17 +61,17 @@ export default function AdminScreen() {
   const handleApprove = async (id: string) => {
     setProcessingId(id);
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ is_approved: true })
-        .eq('id', id);
+      const { error } = await supabase.rpc('admin_approve_doctor', { doctor_id: id });
 
       if (error) throw error;
       
-      Alert.alert('Успех', 'Врач одобрен и теперь виден пациентам!');
+      if (Platform.OS === 'web') window.alert('Врач одобрен и теперь виден пациентам!');
+      else Alert.alert('Успех', 'Врач одобрен и теперь виден пациентам!');
+      
       await loadPendingDoctors();
     } catch (e: any) {
-      Alert.alert('Ошибка RLS', 'Нет прав на редактирование профилей. См. инструкцию в чате.');
+      if (Platform.OS === 'web') window.alert(`Ошибка: ${e.message}`);
+      else Alert.alert('Ошибка', e.message);
       console.error(e);
     } finally {
       setProcessingId(null);
@@ -81,27 +81,17 @@ export default function AdminScreen() {
   const handleReject = async (id: string) => {
     setProcessingId(id);
     try {
-      Alert.alert('Debug', `Начинаем отклонение ID: ${id}`);
-      
-      const { data, error, status } = await supabase
-        .from('profiles')
-        .update({ role: 'patient' })
-        .eq('id', id)
-        .select();
-
-      Alert.alert('Debug', `Статус запроса: ${status}\nОшибка: ${error ? JSON.stringify(error) : 'Нет'}\nОбновлено строк: ${data ? data.length : 0}`);
+      const { error } = await supabase.rpc('admin_reject_doctor', { doctor_id: id });
 
       if (error) throw error;
       
-      if (!data || data.length === 0) {
-        Alert.alert('Ошибка RLS', 'База данных не позволила обновить профиль (0 строк изменено). Проверьте SQL политики.');
-        return;
-      }
-
-      Alert.alert('Отклонен', 'Заявка врача отклонена. Аккаунт переведен в статус пациента.');
+      if (Platform.OS === 'web') window.alert('Заявка врача отклонена. Аккаунт переведен в статус пациента.');
+      else Alert.alert('Отклонен', 'Заявка врача отклонена. Аккаунт переведен в статус пациента.');
+      
       await loadPendingDoctors();
     } catch (e: any) {
-      Alert.alert('Критическая Ошибка', e.message || JSON.stringify(e));
+      if (Platform.OS === 'web') window.alert(`Ошибка: ${e.message}`);
+      else Alert.alert('Ошибка', e.message);
     } finally {
       setProcessingId(null);
     }
