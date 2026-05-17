@@ -81,19 +81,27 @@ export default function AdminScreen() {
   const handleReject = async (id: string) => {
     setProcessingId(id);
     try {
-      // Вместо удаления профиля (что блокируется RLS и оставляет "мертвые" души в auth),
-      // мы переводим отклоненного врача в статус обычного пациента.
-      const { error } = await supabase
+      Alert.alert('Debug', `Начинаем отклонение ID: ${id}`);
+      
+      const { data, error, status } = await supabase
         .from('profiles')
         .update({ role: 'patient' })
-        .eq('id', id);
+        .eq('id', id)
+        .select();
+
+      Alert.alert('Debug', `Статус запроса: ${status}\nОшибка: ${error ? JSON.stringify(error) : 'Нет'}\nОбновлено строк: ${data ? data.length : 0}`);
 
       if (error) throw error;
       
+      if (!data || data.length === 0) {
+        Alert.alert('Ошибка RLS', 'База данных не позволила обновить профиль (0 строк изменено). Проверьте SQL политики.');
+        return;
+      }
+
       Alert.alert('Отклонен', 'Заявка врача отклонена. Аккаунт переведен в статус пациента.');
       await loadPendingDoctors();
     } catch (e: any) {
-      Alert.alert('Ошибка', e.message);
+      Alert.alert('Критическая Ошибка', e.message || JSON.stringify(e));
     } finally {
       setProcessingId(null);
     }
