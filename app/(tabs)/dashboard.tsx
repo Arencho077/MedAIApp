@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, 
 import { supabase } from '../../services/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
+import { sendPushNotification } from '../../services/push';
 
 type Appointment = {
   id: string;
@@ -102,6 +103,14 @@ export default function DashboardScreen() {
       setAppointments(prev =>
         prev.map(a => a.id === appointmentId ? { ...a, status: newStatus } : a)
       );
+
+      // Find the appointment to get the patient_id
+      const appointment = appointments.find(a => a.id === appointmentId);
+      if (appointment && appointment.patient_id) {
+        const title = newStatus === 'confirmed' ? '✅ Ամրագրումը հաստատվել է' : '❌ Ամրագրումը մերժվել է';
+        const body = `Բժիշկը ${newStatus === 'confirmed' ? 'հաստատել' : 'մերժել'} է Ձեր ամրագրումը ${formatDate(appointment.appointment_date)}-ի համար:`;
+        await sendPushNotification(appointment.patient_id, title, body);
+      }
 
       Alert.alert('Done', newStatus === 'confirmed' ? 'Appointment confirmed!' : 'Appointment cancelled.');
     } catch (e: any) {

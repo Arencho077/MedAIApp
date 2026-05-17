@@ -6,6 +6,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../services/supabase';
 import { useFocusEffect } from 'expo-router';
+import { sendPushNotification } from '../../services/push';
 
 type Doctor = {
   id: string;
@@ -131,6 +132,13 @@ export default function DoctorsScreen() {
       });
 
       if (error) throw error;
+
+      // Notify the doctor securely
+      await sendPushNotification(
+        selectedDoctor.id,
+        'Նոր ամրագրում! 📅',
+        `Նոր պացիենտը ամրագրել է ժամ ${selectedDate.toLocaleDateString()} ${selectedTime}-ին`
+      );
 
       setShowCalendar(false);
       Alert.alert(
