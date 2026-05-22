@@ -26,6 +26,15 @@ export default function LoginScreen() {
   
   const [loading, setLoading] = useState(false);
 
+  const showAlert = (title: string, message: string, onPress?: () => void) => {
+    if (Platform.OS === 'web') {
+      window.alert(`${title}\n\n${message}`);
+      if (onPress) onPress();
+    } else {
+      Alert.alert(title, message, onPress ? [{ text: 'OK', onPress }] : undefined);
+    }
+  };
+
   const onDateChange = (event: any, selectedDate?: Date) => {
     // On Android, always close the picker after interaction
     if (Platform.OS === 'android') {
@@ -44,7 +53,7 @@ export default function LoginScreen() {
   const pickDiploma = async () => {
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (permissionResult.granted === false) {
-      Alert.alert('Թույլտվություն', 'Դիպլոմը ներբեռնելու համար անհրաժեշտ է թույլտվություն։');
+      showAlert('Թույլտվություն', 'Դիպլոմը ներբեռնելու համար անհրաժեշտ է թույլտվություն։');
       return;
     }
 
@@ -61,13 +70,13 @@ export default function LoginScreen() {
 
   const handleRegister = async () => {
     if (!email.trim() || !password || !fullName.trim()) {
-      Alert.alert('Սխալ', 'Խնդրում ենք լրացնել բոլոր դաշտերը');
+      showAlert('Սխալ', 'Խնդրում ենք լրացնել բոլոր դաշտերը');
       return;
     }
 
     if (role === 'doctor') {
       if (!birthDate || !socialLink || !diplomaUrl) {
-        Alert.alert('Սխալ', 'Բժիշկները պետք է լրացնեն բոլոր տվյալները (ծննդյան ամսաթիվ, սոցցանցի հղում և դիպլոմի նկար) մոդերացիա անցնելու համար։');
+        showAlert('Սխալ', 'Բժիշկները պետք է լրացնեն բոլոր տվյալները (ծննդյան ամսաթիվ, սոցցանցի հղում և դիպլոմի նկար) մոդերացիա անցնելու համար։');
         return;
       }
     }
@@ -123,23 +132,26 @@ export default function LoginScreen() {
         
         if (insertError) {
           console.error('Profile insert error:', insertError);
-          Alert.alert('Սխալ', 'Պրոֆիլի ստեղծման սխալ: ' + insertError.message);
+          showAlert('Սխալ', 'Պրոֆիլի ստեղծման սխալ: ' + insertError.message);
           return;
         }
         
         if (role === 'doctor') {
           await supabase.auth.signOut();
-          Alert.alert('Պատրաստ է! ✅', 'Ձեր հաշիվը ստեղծվել է և ուղարկվել է ստուգման: Դուք կստանաք հասանելիություն հաստատումից հետո:');
+          showAlert('Պատրաստ է! ✅', 'Ձեր հաշիվը ստեղծվել է և ուղարկվել է ստուգման: Դուք կստանաք հասանելիություն հաստատումից հետո:', () => {
+            setMode('login');
+          });
         } else {
-          Alert.alert('Հաջողություն! ✅', 'Ձեր հաշիվը ստեղծվել է: Մուտք գործեք:');
+          showAlert('Հաջողություն! ✅', 'Ձեր հաշիվը ստեղծվել է: Մուտք գործեք:', () => {
+            setMode('login');
+          });
         }
-        setMode('login');
       }
     } catch (e: any) {
       const errorMessage = e.message === 'Failed to fetch' 
         ? 'Կապի խնդիր: Ստուգեք Ձեր ինտերնետ կապը:' 
         : (e.message || 'Ինչ-որ սխալ տեղի ունեցավ');
-      Alert.alert('Սխալ', errorMessage);
+      showAlert('Սխալ', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -147,7 +159,7 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Սխալ', 'Մուտքագրեք Email և գաղտնաբառ');
+      showAlert('Սխալ', 'Մուտքագրեք Email և գաղտնաբառ');
       return;
     }
     setLoading(true);
@@ -188,7 +200,7 @@ export default function LoginScreen() {
           await supabase.auth.signOut();
           const selectedRoleLabel = role === 'doctor' ? 'Բժիշկ' : 'Պացիենտ';
           const actualRoleLabel = existingProfile.role === 'doctor' ? 'Բժիշկ' : 'Պացիենտ';
-          Alert.alert(
+          showAlert(
             'Սխալ դեր ⚠️',
             `Այս հաշիվը գրանցված է որպես «${actualRoleLabel}»։\nԴուք ընտրել եք «${selectedRoleLabel}»։\n\nԽնդրում ենք վերադառնալ և ընտրել ճիշտ կարգավիճակը։`
           );
@@ -198,7 +210,7 @@ export default function LoginScreen() {
 
       router.replace('/(tabs)');
     } catch (e: any) {
-      Alert.alert('Error', e.message === 'Invalid login credentials'
+      showAlert('Error', e.message === 'Invalid login credentials'
         ? 'Սխալ Email կամ գաղտնաբառ'
         : e.message);
     } finally {
@@ -301,34 +313,56 @@ export default function LoginScreen() {
               <View style={styles.doctorFieldsContainer}>
                 <Text style={styles.sectionHeader}>Մոդերացիայի տվյալներ</Text>
                 
-                <TouchableOpacity 
-                  style={styles.inputWrapper} 
-                  onPress={() => setShowDatePicker(true)}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="calendar-outline" size={20} color="#999" style={styles.inputIcon} />
-                  <Text style={[styles.input, { lineHeight: 52, color: birthDate ? '#1A2E35' : '#999' }]}>
-                    {birthDate ? formatDate(birthDate) : 'Ընտրեք ծննդյան ամսաթիվը'}
-                  </Text>
-                </TouchableOpacity>
-
-                {showDatePicker && (
-                  <View style={styles.datePickerContainer}>
-                    <DateTimePicker
-                      value={birthDate || new Date(1990, 0, 1)}
-                      mode="date"
-                      display={Platform.OS === 'ios' ? 'spinner' : 'calendar'}
-                      onChange={onDateChange}
-                      maximumDate={new Date()}
-                      themeVariant="light" // Fix for white-on-white text in iOS dark mode
-                      textColor="#1A2E35"
+                {Platform.OS === 'web' ? (
+                  <View style={styles.inputWrapper}>
+                    <Ionicons name="calendar-outline" size={20} color="#999" style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      value={birthDate ? birthDate.toISOString().split('T')[0] : ''}
+                      onChangeText={(text) => {
+                        if (text) {
+                          setBirthDate(new Date(text));
+                        } else {
+                          setBirthDate(null);
+                        }
+                      }}
+                      placeholder="Ընտրեք ծննդյան ամսաթիվը"
+                      placeholderTextColor="#999"
+                      {...({ type: 'date' } as any)}
                     />
-                    {Platform.OS === 'ios' && (
-                      <TouchableOpacity onPress={() => setShowDatePicker(false)} style={styles.iosDoneButton}>
-                        <Text style={styles.iosDoneText}>Հաստատել (Պահպանել)</Text>
-                      </TouchableOpacity>
-                    )}
                   </View>
+                ) : (
+                  <>
+                    <TouchableOpacity 
+                      style={styles.inputWrapper} 
+                      onPress={() => setShowDatePicker(true)}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="calendar-outline" size={20} color="#999" style={styles.inputIcon} />
+                      <Text style={[styles.input, { lineHeight: 52, color: birthDate ? '#1A2E35' : '#999' }]}>
+                        {birthDate ? formatDate(birthDate) : 'Ընտրեք ծննդյան ամսաթիվը'}
+                      </Text>
+                    </TouchableOpacity>
+
+                    {showDatePicker && (
+                      <View style={styles.datePickerContainer}>
+                        <DateTimePicker
+                          value={birthDate || new Date(1990, 0, 1)}
+                          mode="date"
+                          display={Platform.OS === 'ios' ? 'spinner' : 'calendar'}
+                          onChange={onDateChange}
+                          maximumDate={new Date()}
+                          themeVariant="light" // Fix for white-on-white text in iOS dark mode
+                          textColor="#1A2E35"
+                        />
+                        {Platform.OS === 'ios' && (
+                          <TouchableOpacity onPress={() => setShowDatePicker(false)} style={styles.iosDoneButton}>
+                            <Text style={styles.iosDoneText}>Հաստատել (Պահպանել)</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    )}
+                  </>
                 )}
 
                 <View style={styles.inputWrapper}>

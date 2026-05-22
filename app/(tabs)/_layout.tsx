@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../services/supabase';
+import { ADMIN_EMAIL } from '../../constants/admin';
 
 export default function TabLayout() {
   const [isAdmin, setIsAdmin] = useState(false);
@@ -10,12 +11,13 @@ export default function TabLayout() {
   useEffect(() => {
     const checkAdmin = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user && user.email === 'sargsyanaren218@gmail.com') {
+      if (user && user.email === ADMIN_EMAIL) {
         setIsAdmin(true);
       }
     };
     checkAdmin();
   }, []);
+
 
   return (
     <Tabs

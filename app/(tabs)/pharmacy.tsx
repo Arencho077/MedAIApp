@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, FlatList, Image, TouchableOpacity,
-  TextInput, Linking, Alert, ScrollView
+  TextInput, Linking, Alert, ScrollView, Platform
+
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
@@ -111,7 +112,8 @@ export default function PharmacyScreen() {
       setCopiedCode(code);
       setTimeout(() => setCopiedCode(null), 2000);
     } catch {
-      Alert.alert('Promo Code', code);
+      if (Platform.OS === 'web') window.alert(`Promo Code: ${code}`);
+      else Alert.alert('Promo Code', code);
     }
   };
 
@@ -183,14 +185,21 @@ export default function PharmacyScreen() {
             style={styles.orderButton}
             onPress={() => {
               copyPromoCode(item.promoCode);
-              Alert.alert(
-                'Order',
-                `Promo code "${item.promoCode}" copied!\n\nVisit ${item.partnerPharmacy} to complete your order with discount.`,
-                [
-                  { text: 'Cancel', style: 'cancel' },
-                  { text: 'Open Site', onPress: () => openPartnerSite('https://google.com') },
-                ]
-              );
+              const infoMsg = `Promo code "${item.promoCode}" copied!\n\nVisit ${item.partnerPharmacy} to complete your order with discount.`;
+              
+              if (Platform.OS === 'web') {
+                const openSite = window.confirm(`${infoMsg}\n\nDo you want to open the partner website?`);
+                if (openSite) openPartnerSite(item.partnerPharmacy === 'Alfa-Pharm' ? 'https://alfapharm.am' : item.partnerPharmacy === 'Natali Pharm' ? 'https://natalipharm.am' : 'https://gedeonrichter.am');
+              } else {
+                Alert.alert(
+                  'Order',
+                  infoMsg,
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Open Site', onPress: () => openPartnerSite(item.partnerPharmacy === 'Alfa-Pharm' ? 'https://alfapharm.am' : item.partnerPharmacy === 'Natali Pharm' ? 'https://natalipharm.am' : 'https://gedeonrichter.am') },
+                  ]
+                );
+              }
             }}
           >
             <Ionicons name="cart" size={18} color="#FFF" />
@@ -200,6 +209,7 @@ export default function PharmacyScreen() {
       </View>
     );
   };
+
 
   return (
     <View style={styles.container}>

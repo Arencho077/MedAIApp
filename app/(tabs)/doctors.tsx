@@ -1,8 +1,9 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, Image, TouchableOpacity,
-  TextInput, Alert, ActivityIndicator, Modal, ScrollView
+  TextInput, Alert, ActivityIndicator, Modal, ScrollView, Platform
 } from 'react-native';
+
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../services/supabase';
 import { useFocusEffect } from 'expo-router';
@@ -106,7 +107,8 @@ export default function DoctorsScreen() {
 
   const confirmBooking = async () => {
     if (!selectedDoctor || !selectedDate || !selectedTime) {
-      Alert.alert('', 'Please select date and time');
+      if (Platform.OS === 'web') window.alert('Please select date and time');
+      else Alert.alert('', 'Please select date and time');
       return;
     }
 
@@ -114,7 +116,8 @@ export default function DoctorsScreen() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        Alert.alert('Error', 'Please log in');
+        if (Platform.OS === 'web') window.alert('Error: Please log in');
+        else Alert.alert('Error', 'Please log in');
         return;
       }
 
@@ -141,17 +144,26 @@ export default function DoctorsScreen() {
       );
 
       setShowCalendar(false);
-      Alert.alert(
-        'Booked!',
-        `${selectedDoctor.full_name}\n${selectedDate.toLocaleDateString()} ${selectedTime}\n${selectedDoctor.clinic_address || ''}`,
-        [{ text: 'OK' }]
-      );
+      
+      const successMsg = `Booked!\n\n${selectedDoctor.full_name}\n${selectedDate.toLocaleDateString()} ${selectedTime}\n${selectedDoctor.clinic_address || ''}`;
+      if (Platform.OS === 'web') {
+        window.alert(successMsg);
+      } else {
+        Alert.alert(
+          'Booked!',
+          `${selectedDoctor.full_name}\n${selectedDate.toLocaleDateString()} ${selectedTime}\n${selectedDoctor.clinic_address || ''}`,
+          [{ text: 'OK' }]
+        );
+      }
     } catch (e: any) {
-      Alert.alert('Error', e.message || 'Something went wrong');
+      const errorMsg = e.message || 'Something went wrong';
+      if (Platform.OS === 'web') window.alert(`Error: ${errorMsg}`);
+      else Alert.alert('Error', errorMsg);
     } finally {
       setSubmitting(false);
     }
   };
+
 
   const formatDateLabel = (date: Date) => {
     const day = date.getDate();
