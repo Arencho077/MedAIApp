@@ -51,7 +51,11 @@ export default function EditProfileScreen() {
   const pickImage = async () => {
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (permissionResult.granted === false) {
-      Alert.alert('Permission needed', 'You need to allow access to your photos to upload an avatar.');
+      if (Platform.OS === 'web') {
+        window.alert('Permission needed: You need to allow access to your photos to upload an avatar.');
+      } else {
+        Alert.alert('Permission needed', 'You need to allow access to your photos to upload an avatar.');
+      }
       return;
     }
 
@@ -69,9 +73,14 @@ export default function EditProfileScreen() {
 
   const saveProfile = async () => {
     if (!fullName.trim()) {
-      Alert.alert('Error', 'Name is required');
+      if (Platform.OS === 'web') {
+        window.alert('Error: Name is required');
+      } else {
+        Alert.alert('Error', 'Name is required');
+      }
       return;
     }
+
 
     setSaving(true);
     try {
@@ -110,14 +119,24 @@ export default function EditProfileScreen() {
 
       if (error) throw error;
 
-      Alert.alert('Saved!', 'Your profile has been updated', [
-        { text: 'OK', onPress: () => router.back() }
-      ]);
+      if (Platform.OS === 'web') {
+        window.alert('Your profile has been updated');
+        router.back();
+      } else {
+        Alert.alert('Saved!', 'Your profile has been updated', [
+          { text: 'OK', onPress: () => router.back() }
+        ]);
+      }
     } catch (e: any) {
-      Alert.alert('Error', e.message);
+      if (Platform.OS === 'web') {
+        window.alert(`Error: ${e.message}`);
+      } else {
+        Alert.alert('Error', e.message);
+      }
     } finally {
       setSaving(false);
     }
+
   };
 
   if (loading) {

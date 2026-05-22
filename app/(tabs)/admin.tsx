@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ActivityIndi
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../services/supabase';
 import { useFocusEffect, Redirect } from 'expo-router';
+import { ADMIN_EMAIL } from '../../constants/admin';
 
 type DoctorProfile = {
   id: string;
@@ -33,7 +34,7 @@ export default function AdminScreen() {
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user && user.email === 'sargsyanaren218@gmail.com') {
+      if (user && user.email === ADMIN_EMAIL) {
         setIsAdmin(true);
         await loadPendingDoctors();
       } else {
@@ -45,6 +46,7 @@ export default function AdminScreen() {
       setLoading(false);
     }
   };
+
 
   const loadPendingDoctors = async () => {
     const { data, error } = await supabase
@@ -98,12 +100,18 @@ export default function AdminScreen() {
   };
 
   const openLink = (url: string) => {
+    const handleError = () => {
+      if (Platform.OS === 'web') window.alert('Ошибка: Не удалось открыть ссылку');
+      else Alert.alert('Ошибка', 'Не удалось открыть ссылку');
+    };
+
     if (!url.startsWith('http')) {
-      Linking.openURL(`https://${url}`).catch(() => Alert.alert('Ошибка', 'Неверная ссылка'));
+      Linking.openURL(`https://${url}`).catch(handleError);
     } else {
-      Linking.openURL(url).catch(() => Alert.alert('Ошибка', 'Не удалось открыть ссылку'));
+      Linking.openURL(url).catch(handleError);
     }
   };
+
 
   if (loading) {
     return <View style={styles.center}><ActivityIndicator size="large" color="#00C4B4" /></View>;

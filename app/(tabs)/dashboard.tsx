@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, Alert, Platform } from 'react-native';
+
 import { supabase } from '../../services/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
@@ -112,10 +113,19 @@ export default function DashboardScreen() {
         await sendPushNotification(appointment.patient_id, title, body);
       }
 
-      Alert.alert('Done', newStatus === 'confirmed' ? 'Appointment confirmed!' : 'Appointment cancelled.');
+      if (Platform.OS === 'web') {
+        window.alert(newStatus === 'confirmed' ? 'Appointment confirmed!' : 'Appointment cancelled.');
+      } else {
+        Alert.alert('Done', newStatus === 'confirmed' ? 'Appointment confirmed!' : 'Appointment cancelled.');
+      }
     } catch (e: any) {
-      Alert.alert('Error', e.message);
+      if (Platform.OS === 'web') {
+        window.alert(`Error: ${e.message}`);
+      } else {
+        Alert.alert('Error', e.message);
+      }
     }
+
   };
 
   const handleSignOut = async () => {
