@@ -245,6 +245,20 @@ CREATE TABLE IF NOT EXISTS api_rate_limits (
 
 CREATE INDEX IF NOT EXISTS idx_rate_limits_user_endpoint ON api_rate_limits(user_id, endpoint, window_start);
 
+-- Enable RLS on rate limits table
+ALTER TABLE api_rate_limits ENABLE ROW LEVEL SECURITY;
+
+-- Users can read their own rate limits (for debugging)
+CREATE POLICY "Users can read own rate limits"
+ON api_rate_limits FOR SELECT
+USING (auth.uid() = user_id);
+
+-- System functions can manage rate limits (SECURITY DEFINER functions)
+CREATE POLICY "System can manage rate limits"
+ON api_rate_limits FOR ALL
+USING (true)
+WITH CHECK (true);
+
 -- Function to check rate limit
 CREATE OR REPLACE FUNCTION check_rate_limit(
   p_user_id UUID,
@@ -310,6 +324,23 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 
 CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action, created_at DESC);
+
+-- Enable RLS on audit logs
+ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
+
+-- Only admins can read audit logs
+CREATE POLICY "Only admins can read audit logs"
+ON audit_logs FOR SELECT
+USING (
+  auth.uid() IN (
+    SELECT id FROM auth.users WHERE email = current_setting('app.admin_email', true)
+  )
+);
+
+-- System functions can write audit logs (SECURITY DEFINER functions)
+CREATE POLICY "System can write audit logs"
+ON audit_logs FOR INSERT
+WITH CHECK (true);
 
 -- Function to log sensitive actions
 CREATE OR REPLACE FUNCTION log_audit(
@@ -390,8 +421,8 @@ LANGUAGE plpgsql
 IMMUTABLE
 AS $$
 BEGIN
-  -- Remove null bytes
-  input_text := REPLACE(input_text, E'\x00', '');
+  -- Remove null bytes (using chr(0) to avoid encoding issues)
+  input_text := REPLACE(input_text, chr(0), '');
 
   -- Trim whitespace
   input_text := TRIM(input_text);
@@ -480,6 +511,18 @@ CREATE TABLE IF NOT EXISTS admin_users (
   granted_by UUID REFERENCES auth.users(id)
 );
 
+-- Enable RLS on admin users table
+ALTER TABLE admin_users ENABLE ROW LEVEL SECURITY;
+
+-- Only admins can manage admin users
+CREATE POLICY "Only admins can manage admin_users"
+ON admin_users FOR ALL
+USING (
+  auth.uid() IN (
+    SELECT id FROM auth.users WHERE email = current_setting('app.admin_email', true)
+  )
+);
+
 -- Function to check if user is admin
 CREATE OR REPLACE FUNCTION is_admin(check_user_id UUID)
 RETURNS BOOLEAN
@@ -533,11 +576,6 @@ ON appointments(patient_id, created_at DESC);
 
 CREATE INDEX IF NOT EXISTS idx_appointments_doctor
 ON appointments(doctor_id, created_at DESC);
-
--- Index for push token lookups
-CREATE INDEX IF NOT EXISTS idx_profiles_push_token
-ON profiles(id)
-WHERE push_token IS NOT NULL;
 
 -- ============================================================================
 -- DONE! All security fixes applied.
