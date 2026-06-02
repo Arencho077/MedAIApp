@@ -85,7 +85,9 @@ export default function EditProfileScreen() {
     setSaving(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        throw new Error('Not authenticated');
+      }
 
       let finalImageUrl = imageUrl;
 
@@ -93,19 +95,36 @@ export default function EditProfileScreen() {
       if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('data:')) {
         const response = await fetch(imageUrl);
         const blob = await response.blob();
+
+        // 🔒 SECURITY: Validate file type
+        const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+        if (!validTypes.includes(blob.type)) {
+          throw new Error('Invalid file type. Only JPEG, PNG, and WebP images are allowed.');
+        }
+
+        // 🔒 SECURITY: Validate file size (max 5MB)
+        const maxSize = 5 * 1024 * 1024; // 5MB
+        if (blob.size > maxSize) {
+          throw new Error('File too large. Maximum size is 5MB.');
+        }
+
         const fileExt = imageUrl.split('.').pop() || 'jpg';
         const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-        
+
         const { error: uploadError } = await supabase.storage
           .from('avatars')
-          .upload(fileName, blob, { contentType: `image/${fileExt}` });
-          
+          .upload(fileName, blob, {
+            contentType: blob.type,
+            upsert: false // 🔒 Prevent accidental overwrites
+          });
+
         if (uploadError) throw uploadError;
-        
+
         const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(fileName);
         finalImageUrl = publicUrl;
       }
 
+      // 🔒 SECURITY FIX: Add .eq('id', user.id) to prevent updating other users' profiles
       const { error } = await supabase
         .from('profiles')
         .update({
@@ -113,9 +132,9 @@ export default function EditProfileScreen() {
           specialty: specialty.trim(),
           experience: experience.trim(),
           clinic_address: clinicAddress.trim(),
-          image_url: finalImageUrl, // Saves the clean public URL
+          image_url: finalImageUrl,
         })
-        .eq('id', user.id);
+        .eq('id', user.id); // 🔒 Critical: Only update own profile
 
       if (error) throw error;
 

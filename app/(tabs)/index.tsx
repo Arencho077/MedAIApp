@@ -15,6 +15,12 @@ export default function ChatScreen() {
     if (inputText.trim() === '') return;
 
     const userMsg = inputText.trim();
+
+    // 🔒 SECURITY: Limit message length to prevent abuse
+    if (userMsg.length > 1000) {
+      return; // Silently reject overly long messages
+    }
+
     const newMessages = [...messages, { id: Date.now().toString(), text: userMsg, sender: 'user' as const }];
     setMessages(newMessages);
     setInputText('');
@@ -74,6 +80,7 @@ export default function ChatScreen() {
           value={inputText}
           onChangeText={setInputText}
           multiline
+          maxLength={1000}
         />
         <TouchableOpacity style={styles.sendButton} onPress={sendMessage} disabled={isLoading || inputText.trim() === ''}>
           <Ionicons name="send" size={20} color="#fff" />

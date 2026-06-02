@@ -118,7 +118,26 @@ export default function PharmacyScreen() {
   };
 
   const openPartnerSite = (url: string) => {
-    Linking.openURL(url).catch(() => {});
+    // 🔒 SECURITY: Validate URL to prevent open redirect attacks
+    try {
+      const parsedUrl = new URL(url);
+      const allowedDomains = ['alfapharm.am', 'natalipharm.am', 'gedeonrichter.am'];
+
+      if (!allowedDomains.some(domain => parsedUrl.hostname.endsWith(domain))) {
+        console.warn('Attempted to open unauthorized domain:', parsedUrl.hostname);
+        return;
+      }
+
+      Linking.openURL(url).catch(() => {
+        if (Platform.OS === 'web') {
+          window.alert('Could not open link');
+        } else {
+          Alert.alert('Error', 'Could not open link');
+        }
+      });
+    } catch (e) {
+      console.error('Invalid URL:', url);
+    }
   };
 
   const renderPartnerBanner = ({ item }: { item: Partner }) => (

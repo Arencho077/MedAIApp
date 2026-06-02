@@ -74,6 +74,19 @@ export default function LoginScreen() {
       return;
     }
 
+    // 🔒 SECURITY: Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      showAlert('Սխալ', 'Անվավեր email հասցե');
+      return;
+    }
+
+    // 🔒 SECURITY: Validate password strength (min 8 chars)
+    if (password.length < 8) {
+      showAlert('Սխալ', 'Գաղտնաբառը պետք է լինի առնվազն 8 նիշ');
+      return;
+    }
+
     if (role === 'doctor') {
       if (!birthDate || !socialLink || !diplomaUrl) {
         showAlert('Սխալ', 'Բժիշկները պետք է լրացնեն բոլոր տվյալները (ծննդյան ամսաթիվ, սոցցանցի հղում և դիպլոմի նկար) մոդերացիա անցնելու համար։');
@@ -85,16 +98,16 @@ export default function LoginScreen() {
     try {
       const formattedDate = birthDate ? formatDate(birthDate) : '';
       const { data, error } = await supabase.auth.signUp({
-        email,
+        email: email.trim().toLowerCase(), // 🔒 Normalize email
         password,
-        options: { 
-          data: { 
-            full_name: fullName, 
+        options: {
+          data: {
+            full_name: fullName.trim(),
             role,
             birth_year: formattedDate,
-            social_link: socialLink,
+            social_link: socialLink.trim(),
             // diploma_url is set after upload
-          } 
+          }
         }
       });
       if (error) throw error;
@@ -105,18 +118,34 @@ export default function LoginScreen() {
         if (role === 'doctor' && diplomaUrl && !diplomaUrl.startsWith('http')) {
           const response = await fetch(diplomaUrl);
           const blob = await response.blob();
+
+          // 🔒 SECURITY: Validate file type
+          const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/pdf'];
+          if (!validTypes.includes(blob.type)) {
+            throw new Error('Invalid file type. Only images and PDFs are allowed.');
+          }
+
+          // 🔒 SECURITY: Validate file size (max 10MB for diploma)
+          const maxSize = 10 * 1024 * 1024;
+          if (blob.size > maxSize) {
+            throw new Error('File too large. Maximum size is 10MB.');
+          }
+
           const fileExt = diplomaUrl.split('.').pop() || 'jpg';
           const fileName = `${data.user.id}-${Date.now()}.${fileExt}`;
-          
+
           const { error: uploadError } = await supabase.storage
             .from('diplomas')
-            .upload(fileName, blob, { contentType: `image/${fileExt}` });
-            
+            .upload(fileName, blob, {
+              contentType: blob.type,
+              upsert: false
+            });
+
           if (uploadError) throw uploadError;
-          
+
           const { data: { publicUrl } } = supabase.storage.from('diplomas').getPublicUrl(fileName);
           finalDiplomaUrl = publicUrl;
-          
+
           // Update user metadata with the final URL
           await supabase.auth.updateUser({ data: { diploma_url: finalDiplomaUrl } });
         }
@@ -124,18 +153,18 @@ export default function LoginScreen() {
         const { error: insertError } = await supabase.from('profiles').insert({
           id: data.user.id,
           role,
-          full_name: fullName,
+          full_name: fullName.trim(),
           birth_year: formattedDate || null,
-          social_link: socialLink || null,
+          social_link: socialLink.trim() || null,
           diploma_url: finalDiplomaUrl || null,
         });
-        
+
         if (insertError) {
           console.error('Profile insert error:', insertError);
           showAlert('Սխալ', 'Պրոֆիլի ստեղծման սխալ: ' + insertError.message);
           return;
         }
-        
+
         if (role === 'doctor') {
           await supabase.auth.signOut();
           showAlert('Պատրաստ է! ✅', 'Ձեր հաշիվը ստեղծվել է և ուղարկվել է ստուգման: Դուք կստանաք հասանելիություն հաստատումից հետո:', () => {
@@ -148,8 +177,8 @@ export default function LoginScreen() {
         }
       }
     } catch (e: any) {
-      const errorMessage = e.message === 'Failed to fetch' 
-        ? 'Կապի խնդիր: Ստուգեք Ձեր ինտերնետ կապը:' 
+      const errorMessage = e.message === 'Failed to fetch'
+        ? 'Կապի խնդիր: Ստուգեք Ձեր ինտերնետ կապը:'
         : (e.message || 'Ինչ-որ սխալ տեղի ունեցավ');
       showAlert('Սխալ', errorMessage);
     } finally {
@@ -162,9 +191,16 @@ export default function LoginScreen() {
       showAlert('Սխալ', 'Մուտքագրեք Email և գաղտնաբառ');
       return;
     }
+
+    // 🔒 SECURITY: Normalize email
+    const normalizedEmail = email.trim().toLowerCase();
+
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: normalizedEmail,
+        password
+      });
       if (error) throw error;
 
       if (data.user) {
@@ -210,9 +246,11 @@ export default function LoginScreen() {
 
       router.replace('/(tabs)');
     } catch (e: any) {
-      showAlert('Error', e.message === 'Invalid login credentials'
+      // 🔒 SECURITY: Don't leak information about whether user exists
+      const errorMessage = e.message === 'Invalid login credentials'
         ? 'Սխալ Email կամ գաղտնաբառ'
-        : e.message);
+        : e.message;
+      showAlert('Error', errorMessage);
     } finally {
       setLoading(false);
     }

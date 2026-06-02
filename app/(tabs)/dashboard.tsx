@@ -93,10 +93,23 @@ export default function DashboardScreen() {
 
   const handleUpdateStatus = async (appointmentId: string, newStatus: string) => {
     try {
+      // 🔒 SECURITY FIX: Verify the doctor owns this appointment before updating
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('Not authenticated');
+      }
+
+      // First verify this appointment belongs to the current doctor
+      const appointment = appointments.find(a => a.id === appointmentId);
+      if (!appointment || appointment.doctor_id !== user.id) {
+        throw new Error('Unauthorized: You can only modify your own appointments');
+      }
+
       const { error } = await supabase
         .from('appointments')
         .update({ status: newStatus })
-        .eq('id', appointmentId);
+        .eq('id', appointmentId)
+        .eq('doctor_id', user.id); // 🔒 Additional safety check in query
 
       if (error) throw error;
 
@@ -105,9 +118,8 @@ export default function DashboardScreen() {
         prev.map(a => a.id === appointmentId ? { ...a, status: newStatus } : a)
       );
 
-      // Find the appointment to get the patient_id
-      const appointment = appointments.find(a => a.id === appointmentId);
-      if (appointment && appointment.patient_id) {
+      // Send notification to patient
+      if (appointment.patient_id) {
         const title = newStatus === 'confirmed' ? '✅ Ամրագրումը հաստատվել է' : '❌ Ամրագրումը մերժվել է';
         const body = `Բժիշկը ${newStatus === 'confirmed' ? 'հաստատել' : 'մերժել'} է Ձեր ամրագրումը ${formatDate(appointment.appointment_date)}-ի համար:`;
         await sendPushNotification(appointment.patient_id, title, body);
@@ -125,7 +137,6 @@ export default function DashboardScreen() {
         Alert.alert('Error', e.message);
       }
     }
-
   };
 
   const handleSignOut = async () => {
