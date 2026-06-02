@@ -64,7 +64,7 @@ CREATE POLICY "Admins can read all profiles"
 ON profiles FOR SELECT
 USING (
   auth.uid() IN (
-    SELECT id FROM profiles WHERE email = current_setting('app.admin_email', true)
+    SELECT id FROM auth.users WHERE email = current_setting('app.admin_email', true)
   )
 );
 
@@ -151,7 +151,7 @@ ON storage.objects FOR SELECT
 USING (
   bucket_id = 'diplomas' AND
   auth.uid() IN (
-    SELECT id FROM profiles WHERE email = current_setting('app.admin_email', true)
+    SELECT id FROM auth.users WHERE email = current_setting('app.admin_email', true)
   )
 );
 
@@ -181,7 +181,7 @@ BEGIN
 
   -- Check if current user is admin
   IF NOT EXISTS (
-    SELECT 1 FROM profiles
+    SELECT 1 FROM auth.users
     WHERE id = auth.uid() AND email = admin_email
   ) THEN
     RAISE EXCEPTION 'Unauthorized: Admin access required';
@@ -212,7 +212,7 @@ BEGIN
 
   -- Check if current user is admin
   IF NOT EXISTS (
-    SELECT 1 FROM profiles
+    SELECT 1 FROM auth.users
     WHERE id = auth.uid() AND email = admin_email
   ) THEN
     RAISE EXCEPTION 'Unauthorized: Admin access required';
