@@ -150,20 +150,8 @@ export default function LoginScreen() {
           await supabase.auth.updateUser({ data: { diploma_url: finalDiplomaUrl } });
         }
 
-        const { error: insertError } = await supabase.from('profiles').insert({
-          id: data.user.id,
-          role,
-          full_name: fullName.trim(),
-          birth_year: formattedDate || null,
-          social_link: socialLink.trim() || null,
-          diploma_url: finalDiplomaUrl || null,
-        });
-
-        if (insertError) {
-          console.error('Profile insert error:', insertError);
-          showAlert('Սխալ', 'Պրոֆիլի ստեղծման սխալ: ' + insertError.message);
-          return;
-        }
+        // ✅ Profile is auto-created by database trigger (handle_new_user)
+        // No need for manual INSERT - the trigger handles it automatically
 
         if (role === 'doctor') {
           await supabase.auth.signOut();
