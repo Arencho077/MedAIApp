@@ -394,5 +394,5 @@ UPDATE profiles SET role = 'banned' WHERE id = 'spammer_id';
 
 ---
 
-**Аудит выполнил:** Claude Opus 4.8  
+**Аудит выполнил:** Internal security review  
 **Последнее обновление:** 2026-06-02 22:45 UTC

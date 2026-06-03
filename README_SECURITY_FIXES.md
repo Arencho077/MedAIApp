@@ -152,4 +152,4 @@ For security issues, please contact: **[your-security-email@domain.com]**
 ---
 
 **Last Updated:** June 2, 2026  
-**Security Audit by:** Claude Code (Opus 4.8)
+**Security Audit by:** Internal security review

@@ -20,6 +20,7 @@ export default function LoginScreen() {
   
   // Doctor strict registration fields
   const [birthDate, setBirthDate] = useState<Date | null>(null);
+  const [birthDateInput, setBirthDateInput] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [socialLink, setSocialLink] = useState('');
   const [diplomaUrl, setDiplomaUrl] = useState('');
@@ -43,11 +44,35 @@ export default function LoginScreen() {
     // Only update date if user selected (not dismissed)
     if (event.type !== 'dismissed' && selectedDate) {
       setBirthDate(selectedDate);
+      setBirthDateInput(selectedDate.toISOString().split('T')[0]);
     }
   };
 
   const formatDate = (date: Date) => {
     return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
+  };
+
+  const parseBirthDateInput = (value: string) => {
+    const trimmed = value.trim();
+    const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    const localMatch = trimmed.match(/^(\d{2})[/.](\d{2})[/.](\d{4})$/);
+
+    const year = isoMatch?.[1] ?? localMatch?.[3];
+    const month = isoMatch?.[2] ?? localMatch?.[2];
+    const day = isoMatch?.[3] ?? localMatch?.[1];
+
+    if (!year || !month || !day) return null;
+
+    const parsedDate = new Date(Number(year), Number(month) - 1, Number(day));
+    if (
+      parsedDate.getFullYear() !== Number(year) ||
+      parsedDate.getMonth() !== Number(month) - 1 ||
+      parsedDate.getDate() !== Number(day)
+    ) {
+      return null;
+    }
+
+    return parsedDate;
   };
 
   const pickDiploma = async () => {
@@ -87,8 +112,23 @@ export default function LoginScreen() {
       return;
     }
 
+    const parsedBirthDate = Platform.OS === 'web' ? parseBirthDateInput(birthDateInput) : birthDate;
+
     if (role === 'doctor') {
-      if (!birthDate || !socialLink || !diplomaUrl) {
+      const missingFields = [];
+      if (!parsedBirthDate) missingFields.push('birth date');
+      if (!socialLink.trim()) missingFields.push('social link');
+      if (!diplomaUrl) missingFields.push('diploma image');
+
+      if (missingFields.length > 0) {
+        showAlert(
+          'Missing doctor info',
+          `Missing: ${missingFields.join(', ')}.\n\nAccepted date formats: YYYY-MM-DD, DD/MM/YYYY, DD.MM.YYYY.`
+        );
+        return;
+      }
+
+      if (!parsedBirthDate || !socialLink.trim() || !diplomaUrl) {
         showAlert('Սխալ', 'Բժիշկները պետք է լրացնեն բոլոր տվյալները (ծննդյան ամսաթիվ, սոցցանցի հղում և դիպլոմի նկար) մոդերացիա անցնելու համար։');
         return;
       }
@@ -96,7 +136,7 @@ export default function LoginScreen() {
 
     setLoading(true);
     try {
-      const formattedDate = birthDate ? formatDate(birthDate) : '';
+      const formattedDate = parsedBirthDate ? formatDate(parsedBirthDate) : '';
       const { data, error } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(), // 🔒 Normalize email
         password,
@@ -112,6 +152,19 @@ export default function LoginScreen() {
       });
       if (error) throw error;
       if (data.user) {
+        const identities = (data.user as any).identities;
+        if (Array.isArray(identities) && identities.length === 0) {
+          showAlert('Account already exists', 'This email is already registered. Please log in or reset your password.');
+          setMode('login');
+          return;
+        }
+
+        if (!data.session) {
+          showAlert('Registration created', 'Please confirm your email, then log in to complete your profile.');
+          setMode('login');
+          return;
+        }
+
         let finalDiplomaUrl = diplomaUrl;
 
         // Upload diploma to storage if it's a local file
@@ -132,7 +185,7 @@ export default function LoginScreen() {
           }
 
           const fileExt = diplomaUrl.split('.').pop() || 'jpg';
-          const fileName = `${data.user.id}-${Date.now()}.${fileExt}`;
+          const fileName = `${data.user.id}/diploma-${Date.now()}.${fileExt}`;
 
           const { error: uploadError } = await supabase.storage
             .from('diplomas')
@@ -344,17 +397,16 @@ export default function LoginScreen() {
                     <Ionicons name="calendar-outline" size={20} color="#999" style={styles.inputIcon} />
                     <TextInput
                       style={styles.input}
-                      value={birthDate ? birthDate.toISOString().split('T')[0] : ''}
+                      value={birthDateInput}
                       onChangeText={(text) => {
-                        if (text) {
-                          setBirthDate(new Date(text));
-                        } else {
-                          setBirthDate(null);
-                        }
+                        const trimmed = text.trim();
+                        setBirthDateInput(text);
+                        setBirthDate(trimmed ? parseBirthDateInput(trimmed) : null);
                       }}
                       placeholder="Ընտրեք ծննդյան ամսաթիվը"
                       placeholderTextColor="#999"
-                      {...({ type: 'date' } as any)}
+                      keyboardType="numbers-and-punctuation"
+                      maxLength={10}
                     />
                   </View>
                 ) : (

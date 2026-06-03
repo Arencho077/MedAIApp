@@ -215,7 +215,7 @@ app.admin_email = 'ваш_email@example.com'
 
 ---
 
-**Аудит выполнен:** Claude Code (Opus 4.8)  
+**Аудит выполнен:** Internal security review  
 **Дата:** 2 июня 2026  
 **Время:** ~45 минут  
 **Найдено проблем:** 13  
